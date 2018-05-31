@@ -1,0 +1,1002 @@
+package com.ebay.clsfd;
+
+import com.google.api.ads.common.lib.auth.OfflineCredentials;
+import com.google.api.ads.common.lib.conf.ConfigurationLoadException;
+import com.google.api.ads.common.lib.exception.OAuthException;
+import com.google.api.ads.common.lib.exception.ValidationException;
+import com.google.api.ads.dfp.axis.factory.DfpServices;
+import com.google.api.ads.dfp.axis.utils.v201705.ReportDownloader;
+import com.google.api.ads.dfp.axis.utils.v201705.StatementBuilder;
+import com.google.api.ads.dfp.axis.v201705.AdUnit;
+import com.google.api.ads.dfp.axis.v201705.AdUnitPage;
+import com.google.api.ads.dfp.axis.v201705.AdUnitParent;
+import com.google.api.ads.dfp.axis.v201705.AdUnitSize;
+import com.google.api.ads.dfp.axis.v201705.ApiException;
+import com.google.api.ads.dfp.axis.v201705.AudienceSegment;
+import com.google.api.ads.dfp.axis.v201705.AudienceSegmentPage;
+import com.google.api.ads.dfp.axis.v201705.AudienceSegmentServiceInterface;
+import com.google.api.ads.dfp.axis.v201705.Column;
+import com.google.api.ads.dfp.axis.v201705.Company;
+import com.google.api.ads.dfp.axis.v201705.CompanyPage;
+import com.google.api.ads.dfp.axis.v201705.CompanyServiceInterface;
+import com.google.api.ads.dfp.axis.v201705.Creative;
+import com.google.api.ads.dfp.axis.v201705.CreativePage;
+import com.google.api.ads.dfp.axis.v201705.CreativeServiceInterface;
+import com.google.api.ads.dfp.axis.v201705.CreativeSet;
+import com.google.api.ads.dfp.axis.v201705.CreativeSetPage;
+import com.google.api.ads.dfp.axis.v201705.CreativeSetServiceInterface;
+import com.google.api.ads.dfp.axis.v201705.Date;
+import com.google.api.ads.dfp.axis.v201705.DateRangeType;
+import com.google.api.ads.dfp.axis.v201705.DateTime;
+import com.google.api.ads.dfp.axis.v201705.Dimension;
+import com.google.api.ads.dfp.axis.v201705.DimensionAttribute;
+import com.google.api.ads.dfp.axis.v201705.ExportFormat;
+import com.google.api.ads.dfp.axis.v201705.InventoryServiceInterface;
+import com.google.api.ads.dfp.axis.v201705.LineItem;
+import com.google.api.ads.dfp.axis.v201705.LineItemPage;
+import com.google.api.ads.dfp.axis.v201705.LineItemServiceInterface;
+import com.google.api.ads.dfp.axis.v201705.Order;
+import com.google.api.ads.dfp.axis.v201705.OrderPage;
+import com.google.api.ads.dfp.axis.v201705.OrderServiceInterface;
+import com.google.api.ads.dfp.axis.v201705.ReportDownloadOptions;
+import com.google.api.ads.dfp.axis.v201705.ReportJob;
+import com.google.api.ads.dfp.axis.v201705.ReportQuery;
+import com.google.api.ads.dfp.axis.v201705.ReportQueryAdUnitView;
+import com.google.api.ads.dfp.axis.v201705.ReportServiceInterface;
+import com.google.api.ads.dfp.axis.v201705.Statement;
+import com.google.api.ads.dfp.axis.v201705.User;
+import com.google.api.ads.dfp.axis.v201705.UserPage;
+import com.google.api.ads.dfp.axis.v201705.UserServiceInterface;
+import com.google.api.ads.dfp.lib.client.DfpSession;
+import com.google.api.client.auth.oauth2.Credential;
+import com.google.common.io.Files;
+import com.google.common.io.Resources;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.rmi.RemoteException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.regex.Pattern;
+
+public class DfpUtility {
+	private String credentialFile;
+	private Map<String, String> networkMap = null;
+
+	public DfpUtility(String credentialFile) {
+		this.credentialFile = credentialFile;
+		this.networkMap = new HashMap<String, String>();
+		networkMap.put("5138", "2");
+		networkMap.put("5144", "1011");
+		networkMap.put("4282", "3001");
+		networkMap.put("30720440", "9031");
+	}
+
+	public Credential getOauth2Credential() {
+		Credential oAuth2Credential = null;
+		try {
+			oAuth2Credential = new OfflineCredentials.Builder()
+					.forApi(OfflineCredentials.Api.DFP)
+					.fromFile(this.credentialFile).build().generateCredential();
+		} catch (OAuthException e) {
+			System.out.println("OAuthentincation Failed.");
+			e.printStackTrace();
+		} catch (ValidationException e) {
+			e.printStackTrace();
+		} catch (ConfigurationLoadException e) {
+			e.printStackTrace();
+		}
+
+		return oAuth2Credential;
+	}
+
+	public Credential getOauth2Credential(String configFile) {
+		Credential oAuth2Credential = null;
+		try {
+			oAuth2Credential = new OfflineCredentials.Builder()
+					.forApi(OfflineCredentials.Api.DFP).fromFile(configFile)
+					.build().generateCredential();
+		} catch (OAuthException e) {
+			System.out.println("OAuthentincation Failed.");
+			e.printStackTrace();
+		} catch (ValidationException e) {
+			e.printStackTrace();
+		} catch (ConfigurationLoadException e) {
+			e.printStackTrace();
+		}
+
+		return oAuth2Credential;
+	}
+
+	public DfpSession getDfpSessioin(Credential credential, String networkCode) {
+		DfpSession dfpSession = null;
+		try {
+			dfpSession = new DfpSession.Builder().fromFile(this.credentialFile)
+					.withOAuth2Credential(credential)
+					.withNetworkCode(networkCode).build();
+		} catch (ValidationException e) {
+			e.printStackTrace();
+		} catch (ConfigurationLoadException e) {
+			e.printStackTrace();
+		}
+		return dfpSession;
+	}
+
+	public List<DFP> generateDFP(String cfgFile) {
+		List<DFP> list = new ArrayList<DFP>();
+		BufferedReader br = null;
+		Credential cre = getOauth2Credential();
+		if (cre != null)
+			System.out.println("generate credential successfully.");
+		else
+			System.exit(-1);
+		try {
+			br = new BufferedReader(new InputStreamReader(new FileInputStream(
+					cfgFile)));
+			String line = null;
+			while ((line = br.readLine()) != null) {
+				String[] dfpInfo = line.split("=");
+				DFP dfp = new DFP();
+				System.out.println("dfp country: " + dfpInfo[0]);
+				dfp.setCountry(dfpInfo[0]);
+				System.out.println("dfp network code: " + dfpInfo[1]);
+				dfp.setNetworkCode(dfpInfo[1]);
+				System.out.println("dfp report file template: " + dfpInfo[2]);
+				dfp.setReportTmpt(dfpInfo[2]);
+				DfpSession dfpSession = getDfpSessioin(cre, dfpInfo[1]);
+				dfp.setDfpSession(dfpSession);
+				System.out.println("dfp dimensions: " + dfpInfo[3]);
+				dfp.setDimensions(dfpInfo[3].split(","));
+				System.out.println("dfp dimension attributes: " + dfpInfo[4]);
+				dfp.setDimensionAttributes(dfpInfo[4].split(","));
+				System.out.println("dfp columns: " + dfpInfo[5]);
+				dfp.setColumns(dfpInfo[5].split(","));
+				System.out.println("dfp custom field: " + dfpInfo[6]);
+				dfp.setCustomFields(dfpInfo[6].split(","));
+				// get filter which is set in Statement
+				String statementQuery = dfpInfo[7];
+				if (!statementQuery.equals("null")) {
+					System.out.println("dfp statement query: " + dfpInfo[7]);
+					Statement statement = new Statement();
+					statement.setQuery(dfpInfo[7]);
+					dfp.setStatement(statement);
+				}
+				System.out.println("dfp start date: " + dfpInfo[8]);
+				dfp.setStartDate(dfpInfo[8]);
+				System.out.println("dfp end date: " + dfpInfo[9]);
+				dfp.setEndDate(dfpInfo[9]);
+				list.add(dfp);
+			}
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				if (br != null)
+					br.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+		return list;
+	}
+
+	public Dimension[] setUpDimension(String[] dimensions) {
+		if ((dimensions == null) || (dimensions.length == 0)) {
+			System.out.println("Dimensions must be specified for your report.");
+			System.exit(-1);
+		}
+
+		int size = dimensions.length;
+		Dimension[] dims = new Dimension[size];
+
+		for (int i = 0; i < dimensions.length; ++i) {
+			String dimStr = dimensions[i];
+			dims[i] = Dimension.fromString(dimStr);
+		}
+		return dims;
+	}
+
+	public DimensionAttribute[] setUpDimensionAttribute(
+			String[] dimensionAttributes) {
+		if ((dimensionAttributes == null) || (dimensionAttributes.length == 0)
+				|| (dimensionAttributes[0].equalsIgnoreCase("null"))) {
+			return null;
+		}
+
+		int size = dimensionAttributes.length;
+		DimensionAttribute[] das = null;
+		das = new DimensionAttribute[size];
+
+		for (int i = 0; i < dimensionAttributes.length; ++i) {
+			String daStr = dimensionAttributes[i];
+			das[i] = DimensionAttribute.fromString(daStr);
+		}
+		return das;
+	}
+
+	public Column[] setUpColumn(String[] columns) {
+		if ((columns == null) || (columns.length == 0)) {
+			System.out
+					.println("Columns(Metrics) must be specified for your report.");
+			System.exit(-1);
+		}
+
+		int size = columns.length;
+		Column[] cls = new Column[size];
+
+		for (int i = 0; i < columns.length; ++i) {
+			System.out.println("Column-"+i+": "+columns[i]);
+			String clStr = columns[i];
+			cls[i] = Column.fromString(clStr);
+		}
+		return cls;
+	}
+
+	public long[] setUpCustomField(String[] customFields) {
+		if ((customFields == null) || (customFields.length == 0)
+				|| (customFields[0].equalsIgnoreCase("null"))) {
+			return null;
+		}
+		int size = customFields.length;
+		long[] cfs = new long[size];
+
+		for (int i = 0; i < customFields.length; ++i) {
+			cfs[i] = Integer.parseInt(customFields[i]);
+		}
+
+		return cfs;
+	}
+
+//	public DimensionFilter[] setUpDimensionFilter(String[] filters) {
+//		if ((filters == null) || (filters.length == 0)
+//				|| (filters[0].equalsIgnoreCase("null"))) {
+//			return null;
+//		}
+//		int size = filters.length;
+//
+//		DimensionFilter[] dfs = new DimensionFilter[size];
+//
+//		for (int i = 0; i < filters.length; ++i) {
+//			String filterStr = filters[i];
+//			dfs[i] = DimensionFilter.fromString(filterStr);
+//		}
+//
+//		return dfs;
+//	}
+
+	public Date setUpDate(String date) {
+		if (date == null) {
+			System.out.println("Date should be specified for your report.");
+			System.exit(-1);
+		}
+		String pattern = "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]";
+		boolean matches = Pattern.matches(pattern, date);
+		if (!(matches)) {
+			System.out.println("Date format should be YYYY-MM-DD");
+			System.exit(-1);
+		}
+
+		String[] start = date.split("-");
+		int year = Integer.valueOf(start[0]).intValue();
+		int month = Integer.valueOf(start[1]).intValue();
+		int day = Integer.valueOf(start[2]).intValue();
+
+		return new Date(Integer.valueOf(year), Integer.valueOf(month),
+				Integer.valueOf(day));
+	}
+
+	public ReportQuery createReport(String[] dim, String[] dimAttr,
+			String[] filter, Statement statement, String[] col,
+			String[] customFieldId, String startDate, String endDate) {
+		Dimension[] dims = setUpDimension(dim);
+		DimensionAttribute[] dimAttrs = setUpDimensionAttribute(dimAttr);
+		Column[] cols = setUpColumn(col);
+		long[] customFields = setUpCustomField(customFieldId);
+
+		Date sd = setUpDate(startDate);
+		Date ed = setUpDate(endDate);
+
+		ReportQuery reportQuery = new ReportQuery();
+		if (dims != null) {
+			reportQuery.setDimensions(dims);
+		}
+		if (dimAttrs != null) {
+			reportQuery.setDimensionAttributes(dimAttrs);
+		}
+
+		if (statement != null) {
+			reportQuery.setStatement(statement);
+		}
+
+		if (cols != null) {
+			reportQuery.setColumns(cols);
+		}
+
+		if (customFields != null) {
+			reportQuery.setCustomFieldIds(customFields);
+		}
+
+		reportQuery.setAdUnitView(ReportQueryAdUnitView.HIERARCHICAL);
+//		reportQuery.setAdUnitView(ReportQueryAdUnitView.TOP_LEVEL);
+
+		if ((sd != null) && (ed != null)) {
+			reportQuery.setDateRangeType(DateRangeType.CUSTOM_DATE);
+			reportQuery.setStartDate(sd);
+			reportQuery.setEndDate(ed);
+		} else {
+			reportQuery.setDateRangeType(DateRangeType.YESTERDAY);
+		}
+		System.out.println("Create report query successfully.");
+		return reportQuery;
+	}
+
+	public int runReport(DfpServices service, DfpSession session,
+			ReportQuery reportQuery, File downloadFile) {
+		// Get the ReportService.
+		ReportServiceInterface reportService = service.get(session,
+				ReportServiceInterface.class);
+		if (reportService == null) {
+			System.out.println("Report service exception.");
+			System.exit(-1);
+		}
+		// Create report job.
+		ReportJob reportJob = new ReportJob();
+		reportJob.setReportQuery(reportQuery);
+		ReportJob reportJob2 = null;
+		long jobId;
+		ReportDownloader reportDownloader = null;
+		//for test use
+		long jobId3 = 0L;
+		// Run report job.
+		try {
+			System.out.println("Begin to run report...");
+			reportJob2 = reportService.runReportJob(reportJob);
+			System.out.println("Evaluate reportJob2 object start");
+			if (reportJob2 == null) {
+				System.out.println("Report exception.");
+				System.exit(-1);
+			} else {
+				System.out.println("Report - " + reportJob2.getId()
+						+ " is running...");
+			}
+			System.out.println("Evaluate reportJob2 object end");
+			jobId = reportJob2.getId();
+			jobId3 = jobId;
+			reportDownloader = new ReportDownloader(reportService, jobId);
+		} catch (ApiException e1) {
+			// TODO Auto-generated catch block
+			e1.getStackTrace();
+		} catch (RemoteException e1) {
+			// TODO Auto-generated catch block
+			e1.getStackTrace();
+		}
+
+		// Create report downloader.
+		File doneFile = null;
+		int rcd = 1;
+		// Wait for the report to be ready.
+
+		// setup download options
+		ReportDownloadOptions options = new ReportDownloadOptions();
+		options.setExportFormat(ExportFormat.CSV_DUMP);
+		options.setUseGzipCompression(true);
+		try {
+			boolean isReportReady = reportDownloader.waitForReportReady();
+			System.out.println("is report ready? "+isReportReady);
+			System.out.println("current job status: "+reportService.getReportJobStatus(jobId3));
+			System.out.printf("Downloading report to %s ...\n",
+					downloadFile.toString());
+			// Download the report.
+			URL url = reportDownloader.getDownloadUrl(options);
+			System.out.println("Report download url: " + url.toString());
+			Resources.asByteSource(url).copyTo(Files.asByteSink(downloadFile));
+			doneFile = new File(downloadFile.getName() + ".done");
+			doneFile.createNewFile();
+		} catch (RemoteException e) {
+			// TODO Auto-generated catch block
+			System.out.println("Remote server exception...");
+			System.out.println("Retrying ... ");
+			URL url = null;
+			try {
+				// Thread.sleep(1000*60);
+				url = reportDownloader.getDownloadUrl(options);
+				System.out.println("Report download url: " + url.toString());
+				Resources.asByteSource(url).copyTo(
+						Files.asByteSink(downloadFile));
+				doneFile = new File(downloadFile.getName() + ".done");
+				doneFile.createNewFile();
+			} catch (RemoteException e1) {
+				// TODO Auto-generated catch block
+				System.out.println("Remote server exception occured again...");
+				// e1.printStackTrace();
+			} catch (MalformedURLException e1) {
+				// TODO Auto-generated catch block
+				System.out.println("Failed to format data to csv.");
+				// e1.printStackTrace();
+			} catch (IOException e1) {
+				// TODO Auto-generated catch block
+				System.out.println("Failed to write data to target file.");
+				// e1.printStackTrace();
+			}
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			System.out
+					.println("Process is interrupted during generating reports on the server.");
+			// e.printStackTrace();
+		} catch (MalformedURLException e) {
+			// TODO Auto-generated catch block
+			System.out.println("Failed to format data to csv.");
+			// e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			System.out.println("Failed to write data to target file.");
+			// e.printStackTrace();
+		} finally {
+			if (doneFile != null && doneFile.exists()) {
+				rcd = 0;
+				doneFile.delete();
+			} else {
+				rcd = 1;
+			}
+		}
+		return rcd;
+	}
+	
+	public String flattenAdUnitParent(AdUnitParent[] p){
+		String result = "";
+		
+		if(p == null || p.length==0)
+		return result;
+		
+		for(int i=0; i < p.length; i++){
+			if(i ==0 ){
+				result +=p[i].getId();
+			}else{
+				result +="^"+p[i].getId();
+			}
+		}
+		return result;
+	}
+	
+	public String flattenAdUnitSizes(AdUnitSize[] p){
+		String result = "";
+		
+		if(p == null || p.length==0)
+		return result;
+		
+		for(int i=0; i < p.length; i++){
+			if(i ==0 ){
+				result +=p[i].getFullDisplayString();
+			}else{
+				result +="^"+p[i].getFullDisplayString();
+			}
+		}
+		return result;
+	}
+	
+	public String dateTime2Str(DateTime dt){
+		if(dt == null)
+			return null;
+		else{
+			String year = dt.getDate().getYear().toString();
+			String month = dt.getDate().getMonth().toString();
+			if(month.length() < 2) month=0+month;
+			String day = dt.getDate().getDay().toString();
+			if(day.length() < 2) day=0+day;
+			String hour = dt.getHour().toString();
+			if(hour.length() < 2) hour = 0+hour;
+			String min = dt.getMinute().toString();
+			if(min.length() < 2) min=0+min;
+			String sec = dt.getSecond().toString();
+			if(sec.length() < 2) sec = 0 + sec;
+			return year+"-"+month+"-"+day+" "+hour+":"+min+":"+sec;
+		}
+	}
+	
+	public String flattenLongArray(long[] ls){
+		String result="";
+		if(ls == null || ls.length == 0)
+			return result;
+		else{
+			for(int i=0; i<ls.length; i++){
+				if(i==0){
+					result+=ls[i];
+				}else{
+					result+="^"+ls[i];
+				}
+			}
+			return result;
+		}
+	}
+
+	/**
+	 * Get all ad units.
+	 */
+	public void getAllAdUnits(DfpServices dfpServices,
+			DfpSession session){
+		String network_code = session.getNetworkCode();
+		String siteId = networkMap.get(network_code);
+		PrintWriter pw = null;
+		try{	
+		pw = new PrintWriter(new OutputStreamWriter(new FileOutputStream("dfp_adunit_match_table_"+network_code+".csv"), "UTF-8"));
+		
+		// Get the InventoryService.
+		InventoryServiceInterface inventoryService = dfpServices.get(session,
+				InventoryServiceInterface.class);
+
+		// Create a statement to select all ad units.
+		StatementBuilder statementBuilder = new StatementBuilder()
+		.limit(100);
+
+		// Default for total result set size.
+		int totalResultSetSize = 0;
+
+		do {
+			// Get ad units by statement.
+			AdUnitPage page = inventoryService
+					.getAdUnitsByStatement(statementBuilder.toStatement());
+
+			if (page.getResults() != null) {
+				totalResultSetSize = page.getTotalResultSetSize();
+				for(AdUnit adunit : page.getResults()){
+					pw.println(adunit.getId()+"\177"
+							+adunit.getParentId()+"\177"
+							+adunit.getHasChildren()+"\177"
+							+flattenAdUnitParent(adunit.getParentPath())+"\177"
+							+adunit.getName()+"\177"
+							+adunit.getTargetWindow()+"\177"
+							+adunit.getStatus()+"\177"
+							+flattenAdUnitSizes(adunit.getAdUnitSizes())+"\177"
+							+adunit.getExplicitlyTargeted()+"\177"
+							+siteId);
+				}
+				pw.flush();
+			}
+
+			statementBuilder.increaseOffsetBy(100);
+		} while (statementBuilder.getOffset() < totalResultSetSize);
+		System.out.printf("Number of results found: %d%n", totalResultSetSize);
+		}catch(ApiException apiException){
+			apiException.printStackTrace();
+		}catch(RemoteException re){
+			re.printStackTrace();
+		} catch (UnsupportedEncodingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}finally{
+			pw.close();
+		}
+	}
+	
+	public void getAllCompanies(DfpServices dfpServices, DfpSession session){
+		String network_code = session.getNetworkCode();
+		String siteId = networkMap.get(network_code);
+		PrintWriter pw = null;
+		try{
+		pw=new PrintWriter(new OutputStreamWriter(new FileOutputStream("dfp_cmpny_match_table_"+network_code+".csv"), "UTF-8"));
+		
+		 // Get the CompanyService.
+	    CompanyServiceInterface companyService =
+	        dfpServices.get(session, CompanyServiceInterface.class);
+
+	    // Create a statement to get all companies.
+	    StatementBuilder statementBuilder = new StatementBuilder()
+	        .limit(100);
+
+	    // Default for total result set size.
+	    int totalResultSetSize = 0;
+
+	    do {
+	      // Get companies by statement.
+	      CompanyPage page = companyService.getCompaniesByStatement(statementBuilder.toStatement());
+
+	      if (page.getResults() != null) {
+	        totalResultSetSize = page.getTotalResultSetSize();
+	        for (Company company : page.getResults()) {
+	        	pw.println(company.getId()+"\177"
+	        			+company.getName()+"\177"
+	        			+company.getType()+"\177"
+	        			+company.getExternalId()+"\177"
+	        			+company.getCreditStatus()+"\177"
+	        			+siteId);
+	        }
+	        pw.flush();
+	      }
+
+	      statementBuilder.increaseOffsetBy(100);
+	    } while (statementBuilder.getOffset() < totalResultSetSize);
+	    System.out.printf("Number of results found: %d%n", totalResultSetSize);
+		}catch(ApiException apiException){
+			apiException.printStackTrace();
+		} catch (RemoteException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (UnsupportedEncodingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}finally{
+			pw.close();
+		}
+	    
+	}
+	
+	public void getAllUsers(DfpServices dfpServices, DfpSession session){
+		String network_code = session.getNetworkCode();
+		String siteId = networkMap.get(network_code);
+		PrintWriter pw = null;
+		try{
+			pw=new PrintWriter(new OutputStreamWriter(new FileOutputStream("dfp_user_match_table_"+network_code+".csv"), "UTF-8"));
+			 // Get the UserService.
+		    UserServiceInterface userService = dfpServices.get(session, UserServiceInterface.class);
+
+		    // Create a statement to get all users.
+		    StatementBuilder statementBuilder = new StatementBuilder()
+		        .limit(100);
+
+		    // Default for total result set size.
+		    int totalResultSetSize = 0;
+
+		    do {
+		      // Get users by statement.
+		      UserPage page = userService.getUsersByStatement(statementBuilder.toStatement());
+
+		      if (page.getResults() != null) {
+		        totalResultSetSize = page.getTotalResultSetSize();
+		        for (User user : page.getResults()) {
+		          pw.println(user.getId()+"\177"
+		        		  +user.getName()+"\177"
+		        		  +user.getEmail()+"\177"
+		        		  +user.getRoleId()+"\177"
+		        		  +user.getRoleName()+"\177"
+		        		  +user.getIsActive()+"\177"
+		        		  +user.getIsEmailNotificationAllowed()+"\177"
+		        		  +user.getExternalId()+"\177"
+		        		  +siteId);
+		        }
+		      }
+		      pw.flush();
+		      statementBuilder.increaseOffsetBy(100);
+		    } while (statementBuilder.getOffset() < totalResultSetSize);
+
+		    System.out.printf("Number of results found: %d%n", totalResultSetSize);
+		}catch(ApiException apiException){
+			apiException.printStackTrace();
+		} catch (RemoteException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (UnsupportedEncodingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}finally{
+			pw.close();
+		}
+	}
+	
+	public void getAllOrders(DfpServices dfpServices, DfpSession session){
+		String network_code = session.getNetworkCode();
+		String siteId = networkMap.get(network_code);
+		PrintWriter pw = null;
+		try{
+			pw=new PrintWriter(new OutputStreamWriter(new FileOutputStream("dfp_order_match_table_"+network_code+".csv"), "UTF-8"));
+		// Get the OrderService.
+	    OrderServiceInterface orderService =
+	        dfpServices.get(session, OrderServiceInterface.class);
+
+	    // Create a statement to select all orders.
+	    StatementBuilder statementBuilder = new StatementBuilder()
+	        .limit(100);
+
+	    // Default for total result set size.
+	    int totalResultSetSize = 0;
+
+	    do {
+	      // Get orders by statement.
+	      OrderPage page =
+	          orderService.getOrdersByStatement(statementBuilder.toStatement());
+
+	      if (page.getResults() != null) {
+	        totalResultSetSize = page.getTotalResultSetSize();
+	        for (Order order : page.getResults()) {
+	          pw.println(order.getId()+"\177"
+	        		  +order.getName()+"\177"
+	        		  +dateTime2Str(order.getStartDateTime())+"\177"
+	        		  +dateTime2Str(order.getEndDateTime())+"\177"
+	        		  +order.getStatus()+"\177"
+	        		  +order.getExternalOrderId()+"\177"
+	        		  +order.getPoNumber()+"\177"
+	        		  +order.getCurrencyCode()+"\177"
+	        		  +order.getAdvertiserId()+"\177"
+	        		  +flattenLongArray(order.getAdvertiserContactIds())+"\177"
+	        		  +order.getAgencyId()+"\177"
+	        		  +flattenLongArray(order.getAgencyContactIds())+"\177"
+	        		  +order.getCreatorId()+"\177"
+	        		  +order.getTraffickerId()+"\177"
+	        		  +flattenLongArray(order.getSecondaryTraffickerIds())+"\177"
+	        		  +order.getSalespersonId()+"\177"
+	        		  +flattenLongArray(order.getSecondarySalespersonIds())+"\177"
+	        		  +order.getTotalImpressionsDelivered()+"\177"
+	        		  +order.getTotalClicksDelivered()+"\177"
+	        		  +order.getTotalViewableImpressionsDelivered()+"\177"
+	        		  +siteId);
+	        }
+	        pw.flush();
+	      }
+
+	      statementBuilder.increaseOffsetBy(100);
+	    } while (statementBuilder.getOffset() < totalResultSetSize);
+
+	    System.out.printf("Number of results found: %d%n", totalResultSetSize);
+	    
+		}catch(ApiException apiException){
+			apiException.printStackTrace();
+		} catch (RemoteException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (UnsupportedEncodingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}finally{
+			pw.close();
+		}
+	}
+	
+	public void getAllCreativeSets(DfpServices dfpServices, DfpSession session){
+		String network_code = session.getNetworkCode();
+		String siteId = networkMap.get(network_code);
+		PrintWriter pw = null;
+		try{
+			
+			pw=new PrintWriter(new OutputStreamWriter(new FileOutputStream("dfp_crtv_set_match_table_"+network_code+".csv"), "UTF-8"));
+			 // Get the CreativeSetService.
+		    CreativeSetServiceInterface creativeSetService =
+		        dfpServices.get(session, CreativeSetServiceInterface.class);
+
+		    // Create a statement to get all creativeSets.
+		    StatementBuilder statementBuilder = new StatementBuilder()
+		        .limit(100);
+
+		    // Default for total result set size.
+		    int totalResultSetSize = 0;
+
+		    do {
+		      // Get creative sets by statement.
+		      CreativeSetPage page =
+		          creativeSetService.getCreativeSetsByStatement(statementBuilder.toStatement());
+
+		      if (page.getResults() != null) {
+		        totalResultSetSize = page.getTotalResultSetSize();
+		        for (CreativeSet cs : page.getResults()) {
+		          pw.println(cs.getId()+"\177"
+		        		  +cs.getName()+"\177"
+		        		  +cs.getMasterCreativeId()+"\177"
+		        		  +flattenLongArray(cs.getCompanionCreativeIds())+"\177"
+		        		  +siteId);
+		        }
+		      }
+		      pw.flush();
+		      statementBuilder.increaseOffsetBy(100);
+		    } while (statementBuilder.getOffset() < totalResultSetSize);
+
+		    System.out.printf("Number of results found: %d%n", totalResultSetSize);
+		}catch(ApiException apiException){
+			apiException.printStackTrace();
+		} catch (RemoteException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (UnsupportedEncodingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}finally{
+			pw.close();
+		}
+	}
+	
+	public void getAllCreatives(DfpServices dfpServices, DfpSession session){
+		String network_code = session.getNetworkCode();
+		String siteId = networkMap.get(network_code);
+		PrintWriter pw = null;
+		try{
+			pw=new PrintWriter(new OutputStreamWriter(new FileOutputStream("dfp_crtv_match_table_"+network_code+".csv"), "UTF-8"));
+			// Get the CreativeService.
+		    CreativeServiceInterface creativeService =
+		        dfpServices.get(session, CreativeServiceInterface.class);
+
+		    // Create a statement to get all creatives.
+		    StatementBuilder statementBuilder = new StatementBuilder()
+		        .limit(100);
+
+		    // Default for total result set size.
+		    int totalResultSetSize = 0;
+
+		    do {
+		      // Get creatives by statement.
+		      CreativePage page = creativeService.getCreativesByStatement(statementBuilder.toStatement());
+
+		      if (page.getResults() != null) {
+		        totalResultSetSize = page.getTotalResultSetSize();
+		        for (Creative creative : page.getResults()) {
+		        	pw.println(creative.getAdvertiserId()+"\177"
+		        			+creative.getId()+"\177"
+		        			+creative.getName()+"\177"
+		        			+creative.getSize().getWidth()+"x"+creative.getSize().getHeight()+"\177"
+		        			+siteId);
+		        }
+		        
+		        pw.flush();
+		      }
+
+		      statementBuilder.increaseOffsetBy(100);
+		    } while (statementBuilder.getOffset() < totalResultSetSize);
+
+		    System.out.printf("Number of results found: %d%n", totalResultSetSize);
+		}catch(ApiException apiException){
+			
+		} catch (RemoteException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (UnsupportedEncodingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}finally{
+			pw.close();
+		}	
+	}
+	
+	public void getAllAudienceSegments(DfpServices dfpServices, DfpSession session){
+		String network_code = session.getNetworkCode();
+		String siteId = networkMap.get(network_code);
+		PrintWriter pw = null;
+		try{
+			pw=new PrintWriter(new OutputStreamWriter(new FileOutputStream("dfp_audnce_seg_match_table_"+network_code+".csv"), "UTF-8"));
+			// Get the AudienceSegmentService.
+		    AudienceSegmentServiceInterface audienceSegmentService =
+		        dfpServices.get(session, AudienceSegmentServiceInterface.class);
+
+		    // Create a statement to select all audience segments.
+		    StatementBuilder statementBuilder = new StatementBuilder()
+		    	.where("not id in (5459650, 5459770, 5470930)")
+		        .limit(100);
+
+		    // Default for total result set size.
+		    int totalResultSetSize = 0;
+
+		    do {
+		      // Get audience segments by statement.
+		      AudienceSegmentPage page =
+		          audienceSegmentService.getAudienceSegmentsByStatement(statementBuilder.toStatement());
+
+		      if (page.getResults() != null) {
+		        totalResultSetSize = page.getTotalResultSetSize();
+		        System.out.printf("Number of results found: %d%n", totalResultSetSize);
+		        for (AudienceSegment audienceSegment : page.getResults()) {
+		          pw.println(audienceSegment.getId()+"\177"
+		        		  +audienceSegment.getName()+"\177"
+		        		  +flattenLongArray(audienceSegment.getCategoryIds())+"\177"
+		        		  +audienceSegment.getStatus()+"\177"
+		        		  +audienceSegment.getSize()+"\177"
+		        		  +audienceSegment.getType().getValue()+"\177"
+		        		  +siteId);
+		        }
+		        pw.flush();
+		      }
+
+		      statementBuilder.increaseOffsetBy(100);
+		    } while (statementBuilder.getOffset() < totalResultSetSize);
+
+		    System.out.printf("Number of results found: %d%n", totalResultSetSize);
+		}catch(ApiException apiException){
+			apiException.printStackTrace();
+		} catch (RemoteException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (UnsupportedEncodingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
+	public void getAllLineItems(DfpServices dfpServices, DfpSession session){
+		String network_code = session.getNetworkCode();
+		String siteId = networkMap.get(session.getNetworkCode());
+		PrintWriter pw = null;
+		try {
+			pw = new PrintWriter(new OutputStreamWriter(new FileOutputStream("dfp_line_item_match_table_"+network_code+".csv"), "UTF-8"));
+			// Get the LineItemService.
+		    LineItemServiceInterface lineItemService =
+		        dfpServices.get(session, LineItemServiceInterface.class);
+
+		    // Create a statement to select all line items.
+		    StatementBuilder statementBuilder = new StatementBuilder()
+		        .limit(50);
+
+		    // Default for total result set size.
+		    int totalResultSetSize = 0;
+
+		    do {
+		      // Get line items by statement.
+		      LineItemPage page =
+		          lineItemService.getLineItemsByStatement(statementBuilder.toStatement());
+
+		      if (page.getResults() != null) {
+		        totalResultSetSize = page.getTotalResultSetSize();
+		        for (LineItem lineItem : page.getResults()) {
+		          pw.println(lineItem.getOrderId()+"\177"
+		        		  +lineItem.getId()+"\177"
+		        		  +lineItem.getName()+"\177"
+		        		  +lineItem.getExternalId()+"\177"
+		        		  +dateTime2Str(lineItem.getStartDateTime())+"\177"
+		        		  +dateTime2Str(lineItem.getEndDateTime())+"\177"
+		        		  +lineItem.getUnlimitedEndDateTime()+"\177"
+		        		  +lineItem.getLineItemType()+"\177"
+		        		  +lineItem.getCostPerUnit().getMicroAmount()+"\177"
+		        		  +lineItem.getValueCostPerUnit().getMicroAmount()+"\177"
+		        		  +lineItem.getCostType()+"\177"
+		        		  +lineItem.getDiscountType().getValue()+"\177"
+		        		  +lineItem.getDiscount()+"\177"
+		        		  +lineItem.getStatus().getValue()+"\177"
+		        		  +dateTime2Str(lineItem.getLastModifiedDateTime())+"\177"
+		        		  +dateTime2Str(lineItem.getCreationDateTime())+"\177"
+		        		  +lineItem.getPriority()+"\177"
+		        		  +siteId);
+		        }
+		        
+		        pw.flush();
+		      }
+
+		      statementBuilder.increaseOffsetBy(50);
+		    } while (statementBuilder.getOffset() < totalResultSetSize);
+
+		    System.out.printf("Number of results found: %d%n", totalResultSetSize);
+		} catch (UnsupportedEncodingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (ApiException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (RemoteException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} finally{
+			pw.close();
+		}
+	}
+
+}
