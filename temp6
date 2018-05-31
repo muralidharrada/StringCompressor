@@ -1,0 +1,37 @@
+rem "DFP app, required Teradata logins in fastload & bteq scripts, and file destinations in fastload file"
+
+set app_path=%USERPROFILE%\Documents\GitHub\FAST-AU\apps\GoogleDFP
+cd %app_path%
+
+set logMonth=%date:~4,2%
+set logDay=%date:~7,2%
+set logYear=%date:~12,2%
+
+if %logDay% LSS 10 SET /a logDay=%logDay:0=%-1
+if %logDay% GTR 9 SET /a logDay=%logDay%-1
+if %logDay% LSS 1 SET /a logMonth=%logMonth%-1
+rem if %logMonth% LSS 10 SET logMonth=0%logMonth% <-- check this later as causing extra zero
+if %logMonth% LSS 10 SET logMonth=%logMonth%
+if %logDay% LSS 1 SET /a logDay=%logDay:0=%+30
+if %logDay% LSS 10 SET logDay=0%logDay%
+set "to_date=%date:~10,4%-%logMonth%-%logDay%"
+
+if %logDay% LSS 10 SET /a logDay=%logDay:0=%-3
+if %logDay% GTR 9 SET /a logDay=%logDay%-3
+if %logDay% LSS 1 SET /a logMonth=%logMonth%-1
+rem if %logMonth% LSS 10 SET logMonth=0%logMonth% <-- check this later as causing extra zero
+if %logDay% LSS 1 SET /a logDay=%logDay:0=%+30
+if %logDay% LSS 10 SET logDay=0%logDay%
+set "from_date=%date:~10,4%-%logMonth%-%logDay%"
+echo %from_date% %to_date%
+
+C:\Python27\python.exe %USERPROFILE%\Documents\GitHub\FAST-AU\apps\GoogleDFP\get_fastload_file.py
+
+echo "Launching DFP app"
+CALL %app_path%\launch_sc_data.bat
+
+echo  "Launching AB test scripts on web"
+CALL %app_path%\launch_ab_test.bat
+
+echo  Sending mail ...
+CALL %app_path%\mail.bat
