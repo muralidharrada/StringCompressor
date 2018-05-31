@@ -1,0 +1,28 @@
+package com.ebay.clsfd;
+
+import com.google.api.ads.dfp.axis.factory.DfpServices;
+import com.google.api.ads.dfp.lib.client.DfpSession;
+import com.google.api.client.auth.oauth2.Credential;
+
+public class DfpMatchTables {
+
+	public static void main(String[] args) {
+		// TODO Auto-generated method stub
+		DfpUtility dfpUtil = new DfpUtility(args[0]);
+		DfpServices dfpServices = new DfpServices();
+		
+		Credential credential = dfpUtil.getOauth2Credential();
+		DfpSession session = dfpUtil.getDfpSessioin(credential, args[1]);
+//		
+		dfpUtil.getAllAudienceSegments(dfpServices, session);
+		dfpUtil.getAllAdUnits(dfpServices, session);
+		dfpUtil.getAllCompanies(dfpServices, session);
+		dfpUtil.getAllUsers(dfpServices, session);
+		dfpUtil.getAllOrders(dfpServices, session);
+		dfpUtil.getAllCreativeSets(dfpServices, session);
+		dfpUtil.getAllCreatives(dfpServices, session);
+		dfpUtil.getAllLineItems(dfpServices, session);
+		
+	}
+
+}
