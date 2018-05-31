@@ -1,0 +1,88 @@
+package com.ebay.clsfd;
+
+import com.google.api.ads.dfp.axis.factory.DfpServices;
+import com.google.api.ads.dfp.axis.v201705.ReportQuery;
+import com.google.api.ads.dfp.lib.client.DfpSession;
+
+import java.io.File;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.List;
+
+import org.apache.log4j.BasicConfigurator;
+import org.apache.log4j.Logger;
+
+public class GenerateDFPReport {
+	
+	static Logger logger = Logger.getLogger(GenerateDFPReport.class);
+	
+	public static void main(String[] args) {
+		
+//		System.getProperties().put("proxySet", "true");
+//		System.getProperties().put("proxyHost", "sjd-entbc-001");
+//		System.getProperties().put("proxyPort", "80");
+		 BasicConfigurator.configure();
+		DfpUtility dfpUtil = new DfpUtility(args[0]);
+		
+		logger.debug("Start running program...");;
+
+		List<DFP> list = dfpUtil.generateDFP("dfp_info.cfg");
+		DfpServices service = new DfpServices();
+
+		for (DFP dfp : list) {
+			String country = dfp.getCountry();
+			String networkCode = dfp.getNetworkCode();
+			System.out.println("Generate Report for " + country);
+			String startDate = dfp.getStartDate();
+			if(startDate == null || startDate.equals("")){
+				DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+				Date date = new Date();
+				startDate = dateFormat.format(date);
+			}
+			final String reportFile = dfp.getReportTmpt() + startDate + ".csv.gz";
+
+			File report = new File(reportFile);
+			if (report.exists() && report.length() > 0) {
+				System.out.println(report.getName()
+						+ " has already been generated.");
+			} else {
+
+				DfpSession dfpSession = dfp.getDfpSession();
+				if (dfpSession != null)
+					System.out.println("Generate Dfp session for " + country
+							+ " successfully.");
+				else {
+					System.exit(-1);
+				}
+
+				System.out.println("Report start date: " + dfp.getStartDate());
+				System.out.println("Report end date: " + dfp.getEndDate());
+
+				ReportQuery reportQuery = dfpUtil.createReport(
+						dfp.getDimensions(), dfp.getDimensionAttributes(),
+						dfp.getDimensionFilter(), dfp.getStatement(), dfp.getColumns(),
+						dfp.getCustomFields(), dfp.getStartDate(),
+						dfp.getEndDate());
+				int result = dfpUtil.runReport(service, dfpSession,
+						reportQuery, report);
+				int i = 0;
+				while ((result != 0) && (i < 5)) {
+					try {
+						Thread.sleep(10000L);
+						result = dfpUtil.runReport(service, dfpSession,
+								reportQuery, report);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+				if (result == 0)
+					System.out.println("Generating Report for " + country + " "
+							+ networkCode + " succeeded...");
+				else
+					System.out.println("Generating Report for " + country + " "
+							+ networkCode + " failed...");
+			}
+		}
+	}
+}
