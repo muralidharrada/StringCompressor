@@ -1,0 +1,116 @@
+package com.ebay.clsfd;
+
+import com.google.api.ads.dfp.axis.v201705.Statement;
+import com.google.api.ads.dfp.lib.client.DfpSession;
+
+public class DFP {
+	private String country;
+	private String networkCode;
+	private String reportTmpt;
+	private DfpSession dfpSession = null;
+
+	private String[] dimensions = null;
+	private String[] dimensionAttributes = null;
+	private String[] columns = null;
+	private String[] customFields = null;
+	private String[] dimensionFilter = null;
+	private Statement statement = null;
+	private String startDate;
+	private String endDate;
+
+	public String getCountry() {
+		return this.country;
+	}
+
+	public void setCountry(String country) {
+		this.country = country;
+	}
+
+	public String getNetworkCode() {
+		return this.networkCode;
+	}
+
+	public void setNetworkCode(String networkCode) {
+		this.networkCode = networkCode;
+	}
+
+	public String getReportTmpt() {
+		return this.reportTmpt;
+	}
+
+	public void setReportTmpt(String reportTmpt) {
+		this.reportTmpt = reportTmpt;
+	}
+
+	public DfpSession getDfpSession() {
+		return this.dfpSession;
+	}
+
+	public void setDfpSession(DfpSession dfpSession) {
+		this.dfpSession = dfpSession;
+	}
+
+	public String[] getDimensions() {
+		return this.dimensions;
+	}
+
+	public void setDimensions(String[] dimensions) {
+		this.dimensions = dimensions;
+	}
+
+	public String[] getDimensionAttributes() {
+		return this.dimensionAttributes;
+	}
+
+	public void setDimensionAttributes(String[] dimensionAttributes) {
+		this.dimensionAttributes = dimensionAttributes;
+	}
+
+	public String[] getColumns() {
+		return this.columns;
+	}
+
+	public void setColumns(String[] columns) {
+		this.columns = columns;
+	}
+
+	public String[] getCustomFields() {
+		return this.customFields;
+	}
+
+	public void setCustomFields(String[] customFields) {
+		this.customFields = customFields;
+	}
+
+	public String[] getDimensionFilter() {
+		return this.dimensionFilter;
+	}
+
+	public void setDimensionFilter(String[] dimensionFilter) {
+		this.dimensionFilter = dimensionFilter;
+	}
+
+	public String getStartDate() {
+		return this.startDate;
+	}
+
+	public void setStartDate(String startDate) {
+		this.startDate = startDate;
+	}
+
+	public String getEndDate() {
+		return this.endDate;
+	}
+
+	public void setEndDate(String endDate) {
+		this.endDate = endDate;
+	}
+
+	public Statement getStatement() {
+		return statement;
+	}
+
+	public void setStatement(Statement statement) {
+		this.statement = statement;
+	}
+}
